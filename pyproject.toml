@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adsorb-screen"
+version = "0.1.0"
+description = "General-purpose AdsorbML screening of molecules and radicals on catalytic surfaces with FAIRChem / UMA."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "Raghavendra Meena", email = "raghavendra.ip2020@gmail.com" }
+]
+keywords = ["catalysis", "adsorption", "machine-learning-potentials", "fairchem", "DFT", "VASP", "ASE"]
+dependencies = [
+    "numpy>=1.23",
+    "pandas>=1.5",
+    "ase>=3.22",
+    "fairchem-core>=2.0.0",
+    "fairchem-data-oc>=0.1.0",
+]
+
+[project.optional-dependencies]
+smiles = ["rdkit>=2023.3.1"]
+mp = ["mp-api>=0.39.0", "pymatgen>=2023.10.0"]
+dev = ["pytest>=7.0", "ruff>=0.3.0"]
+
+[project.scripts]
+adsorb-screen = "adsorb_screen.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

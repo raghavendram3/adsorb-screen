@@ -16,3 +16,15 @@ pip install -e .
 pip install -e ".[smiles,mp,dev]"
 huggingface-cli login
 ```
+
+## Citation
+
+```bibtex
+@software{meena_adsorb_screen_2026,
+  author  = {Meena, Raghavendra},
+  title   = {AdsorbScreen: Automated, general-purpose **AdsorbML** configuration screening of molecules, radicals, and atoms on **any catalytic surface** using FAIRChem v2 / UMA and VASP input generation.},
+  year    = {2026},
+  version = {0.0.1},
+  url     = {https://github.com/raghavendram3/adsorb-screen},
+}
+```

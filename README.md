@@ -24,7 +24,7 @@ huggingface-cli login
   author  = {Meena, Raghavendra},
   title   = {AdsorbScreen: Automated, general-purpose **AdsorbML** configuration screening of molecules, radicals, and atoms on **any catalytic surface** using FAIRChem v2 / UMA and VASP input generation.},
   year    = {2026},
-  version = {0.0.1},
+  version = {0.1.1},
   url     = {https://github.com/raghavendram3/adsorb-screen},
 }
 ```

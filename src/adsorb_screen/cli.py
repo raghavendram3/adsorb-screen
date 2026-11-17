@@ -2,20 +2,23 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import random
+from pathlib import Path
 import warnings
 
 import numpy as np
 import pandas as pd
 from ase.io import write
 from fairchem.data.oc.core import Adsorbate, Slab
-from fairchem.data.oc.core.multi_adsorbate_slab_config import MultipleAdsorbateSlabConfig
+from fairchem.data.oc.core.multi_adsorbate_slab_config import (
+    MultipleAdsorbateSlabConfig,
+)
 
 from .modes import binding_modes, describe_modes, orient_for_binding
-from .molecules import BUILTIN_MOLECULES, build_dimer, load_molecule
+from .molecules import build_dimer, load_molecule
 from .relax import (
     OPTIMIZERS,
+    explain_top_configuration,
     find_anomalies,
     get_calculator,
     make_relax_job,
@@ -115,7 +118,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Place adsorbates on the unrelaxed input slab instead of the ML-relaxed clean slab.",
     )
-    g_ads.add_argument("--save-trajectories", action="store_true", help="Save .traj files for all relaxations.")
     g_ads.add_argument("--seed", type=int, default=0, help="Random seed for reproducible placements.")
 
     g_ml = p.add_argument_group("MLIP Model")
@@ -223,6 +225,7 @@ def run_molecule(
                     "converged": res["converged"],
                     "min_ads_slab_dist_A": res["min_dist"],
                     "anomalies": ",".join(anomalies) or "none",
+                    "trajectory": res["trajectory"] or "",
                 }
             )
             for a in anomalies:
@@ -247,6 +250,7 @@ def run_molecule(
                 "E_adslab_eV": c["energy"],
                 "converged": c["converged"],
                 "min_ads_slab_dist_A": c["min_dist"],
+                "trajectory": c["trajectory"] or "",
             }
             for c in candidates
         ]
@@ -262,6 +266,14 @@ def run_molecule(
 
     print(f"\n{name}: top configurations (E_ads = E_adslab - E_slab - E[{ref_label}]; negative = exothermic)")
     print(df.head(args.top_k).to_string(float_format=lambda x: f"{x:.3f}"))
+
+    geometry = explain_top_configuration(candidates[0], candidates, relaxed_slab)
+    with open(mol_dir / "top_geometry_analysis.json", "w") as f:
+        json.dump(geometry, f, indent=2)
+    print("\nGeometric check for the top configuration:")
+    for reason in geometry["reasons"]:
+        print(f"  - {reason}")
+    print(f"  Geometry details: {mol_dir / 'top_geometry_analysis.json'}")
 
     if not args.no_vasp:
         write_vasp_dir(
@@ -297,6 +309,7 @@ def run_molecule(
         "best_mode": top[0]["mode"],
         "best_E_ads_eV": top[0]["E_ads"],
         "best_per_mode_eV": best_per_mode,
+        "top_geometry_analysis": geometry,
     }
     with open(mol_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
@@ -320,9 +333,9 @@ def main() -> None:
 
     outdir = Path(args.outdir).resolve()
     outdir.mkdir(parents=True, exist_ok=True)
-    traj_dir = (outdir / "trajectories") if args.save_trajectories else None
-    if traj_dir is not None:
-        traj_dir.mkdir(parents=True, exist_ok=True)
+    # Keep one trajectory file per relaxation, including rejected and unconverged runs.
+    traj_dir = outdir / "trajectories"
+    traj_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Model: {args.model} | Task: {args.task} | Device: {args.device or 'auto'}")
 

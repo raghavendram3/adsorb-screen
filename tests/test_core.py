@@ -1,6 +1,13 @@
 import numpy as np
+from ase import Atoms
+from ase.calculators.emt import EMT
 from adsorb_screen.modes import binding_modes, orient_for_binding, safe_rotate
 from adsorb_screen.molecules import load_molecule
+from adsorb_screen.relax import (
+    adsorption_geometry,
+    explain_top_configuration,
+    make_relax_job,
+)
 from adsorb_screen.slab import get_bulk_cn, load_bulk_atoms
 
 
@@ -40,3 +47,30 @@ def test_bulk_cn_quartz_and_pt():
     pt = load_bulk_atoms("Pt")
     cn_pt = get_bulk_cn(pt)
     assert cn_pt["Pt"] == 12
+
+
+def test_each_relaxation_writes_its_own_trajectory(tmp_path):
+    atoms = Atoms("Cu2", positions=[[0, 0, 0], [0, 0, 2.5]], tags=[1, 2])
+    relax = make_relax_job(EMT(), steps=0, traj_dir=tmp_path)
+
+    result = relax(atoms, "CO mode #1")
+
+    assert result["converged"] is False
+    assert result["trajectory"] == str(tmp_path / "CO_mode_1.traj")
+    assert (tmp_path / "CO_mode_1.traj").is_file()
+
+
+def test_top_geometry_explanation_compares_valid_candidates():
+    slab = Atoms("Cu", positions=[[0, 0, 0]])
+    top = Atoms("CuO", positions=[[0, 0, 0], [0, 0, 1.8]], tags=[1, 2])
+    other = Atoms("CuO", positions=[[0, 0, 0], [0, 0, 3.0]], tags=[1, 2])
+    top_result = {"atoms": top, "initial": top.copy(), "E_ads": -1.0, "mode": "O0"}
+    other_result = {"atoms": other, "initial": other.copy(), "E_ads": -0.2, "mode": "O0"}
+
+    geometry = adsorption_geometry(top, slab, top.copy())
+    explanation = explain_top_configuration(top_result, [top_result, other_result], slab)
+
+    assert geometry["surface_contacts"] == 1
+    assert explanation["top_energy_eV"] == -1.0
+    assert explanation["top_geometry"]["min_ads_slab_distance_A"] == 1.8
+    assert explanation["reasons"]
